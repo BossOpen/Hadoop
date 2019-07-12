@@ -1,0 +1,185 @@
+修改主机名和ip：
+修改主机/etc/hostname 为 master，从机依次修改为 slave1，slave2......
+修改主机从机/etc/hosts，添加对应IP地址：
+192.168.1.191	master
+192.168.1.192	slave1
+192.168.1.193	slave2
+......
+
+一、主机从机添加用户组(root下)：
+sudo groupadd hadoop
+sudo useradd -s /bin/bash -d /home/hduser -m hduser -g hadoop
+sudo passwd hduser
+sudo usermod -G wheel hduser
+
+赋予用户sudo权限：
+chmod 777 /etc/sudoers
+vi /etc/sudoers
+增加：hduser    ALL=(ALL)       ALL
+pkexec chmod 555 /etc/sudoers
+
+设置静态IP：
+vi /etc/sysconfig/network-scripts/ifcfg-eth0
+ONBOOT=yes
+BOOTPROTO=static
+IPADDR=192.168.31.181
+NETMASK=255.255.255.0
+切换hduser用户：
+su hduser
+
+二、ssh免密登陆：
+主机:
+ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa 生成秘钥
+
+主机 and 从机：
+sudo cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys 认证公钥
+
+希望ssh公钥生效需满足至少下面两个条件：
+　　　　　　1) .ssh目录的权限必须是700   
+sudo chmod 700 -R .ssh/
+　　　　　　2) .ssh/authorized_keys文件权限必须是600
+sudo chmod 600 .ssh/authorized_keys
+
+永久关闭防火墙命令。(防火墙不关闭，节点之间无法通信)
+sudo systemctl stop firewalld.service   
+sudo systemctl disable firewalld.service
+
+设置权限：
+sudo vi /etc/ssh/sshd_config
+打开
+RSAAuthentication yes
+PubkeyAuthentication yes
+
+ssh master第一次输入密码后，exit退出，第二次登录实现免密。
+
+三、安装配置hadoop：
+1、拷贝环境到从机：
+scp hduser@master:~/hadoop-2.8.5.tar.gz ~/
+scp hduser@master:~/jdk-linux-x64.tar.gz ~/
+2、解压：
+tar -zxvf hadoop-2.8.5.tar.gz;tar -zxvf jdk-linux-x64.tar.gz
+
+3、创建快捷方式：
+sudo ln -snf /home/hduser/hadoop/hadoop-2.7.3 /opt/hadoop
+sudo ln -snf /home/hduser/hadoop/jdk1.8.0_144/ /opt/jdk
+4、设置data目录
+sudo mkdir -p /home/hduser/data/hadoop/hdfs/namenode
+sudo mkdir -p /home/hduser/data/hadoop/hdfs/datanode
+sudo mkdir -p /home/hduser/data/hadoop/hdfs/snamenode
+sudo mkdir -p /home/hduser/data/hadoop/yarn/namenode
+sudo mkdir -P /home/hduser/data/tmp
+一定要设置成：
+sudo chown -R hduser /home/hduser/data
+sudo chown -R hduser /home/hduser/hadoop
+
+配置环境变量：
+vi ~/.bashrc
+
+export JAVA_HOME=/opt/jdk
+export JRE_HOME=$JAVA_HOME/jre
+export CLASSPATH=.:$JAVA_HOME/lib
+export PATH=$PATH:$JAVA_HOME/bin
+echo "config java env......"
+export HADOOP_HOME=/opt/hadoop
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+echo "config hadoop env......"
+
+source ~/.bashrc
+                        
+5、配置hadoop目录下的几个文件及环境变量主要有这5个文件需要修改：
+（1）、etc/hadoop/hadoop-env.sh 添加：
+export JAVA_HOME=/opt/jdk
+
+（2）、etc/hadoop/core-site.xml 添加：
+<configuration>
+	<property>
+		<name>fs.defaultFS</name>
+		<value>hdfs://master:9000</value>   
+	</property>
+	
+	<property>
+		<name>hadoop.tmp.dir</name>
+		<value>/home/hduser/data/tmp</value>
+	</property>
+</configuration>
+第一个fs.defaultFS设置默认文件系统的名称，用来确定文件系统的主机、端口  
+第二个hadoop.tmp.dir配置Hadoop的一个临时目录，用来存放每次运行的作业jpb的信息。
+
+（3）、etc/hadoop/hdfs-site.xml 添加：
+<configuration>
+	<property>
+		<name>dfs.nameservices</name>
+		<value>hadoop-cluster</value>
+	</property>
+	<property>
+		<name>dfs.replication</name>
+		<value>3</value>
+	</property>
+	<property>
+		<name>dfs.namenode.name.dir</name>
+		<value>file:///home/hduser/data/hadoop/hdfs/namenode</value>
+	</property>
+	<property>
+		<name>dfs.datanode.data.dir</name>
+		<value>file:///home/hduser/data/hadoop/hdfs/datanode</value>
+	</property>
+	<property>
+		<name>dfs.secondary.http.address</name>
+		<value>slave1:50090</value>
+	</property>
+	<property>
+		<name>dfs.http.address</name>
+		<value>master:50070</value>
+		<final>true</final>
+	</property>
+	
+</configuration>
+分析：
+dfs.nameservices：在一个全分布式集群这个value要相同
+dfs.replication：因为hadoop是具有可靠性的，它会备份多个文本，这里value就是指备份的数量（小于等于从节点的数量）
+
+（4）、etc/hadoop/mapred-site.xml 添加：
+注意：如果在刚解压之后，没有这个文件,要将mapred-site.xml.template复制为mapred-site.xml。
+cp hadoop-2.8.5/etc/hadoop/mapred-site.xml.template hadoop-2.8.5/etc/hadoop/mapred-site.xml
+
+<configuration>
+	<property>
+		<!--指定Mapreduce运行在yarn上-->
+		<name>mapreduce.framework.name</name>
+		<value>yarn</value>
+	</property>
+</configuration>
+
+（5）、etc/hadoop/yarn-site.xml 添加：
+<configuration>
+	<!-- 指定ResourceManager的地址-->
+	<property>
+		<name>yarn.resourcemanager.hostname</name>
+		<value>master</value>
+	</property>
+	<!-- 指定reducer获取数据的方式-->
+	<property>
+		<name>yarn.nodemanager.aux-services</name>
+		<value>mapreduce_shuffle</value>
+	</property>
+	<property>
+		<name>yarn.nodemanager.local-dirs</name>
+		<value>file:///home/hduser/data/hadoop/yarn/namenode</value>
+	</property>
+</configuration>
+
+（6）、etc/hadoop/slaves 添加：
+slave1
+slave2
+
+6、克隆虚拟机
+(1)、修改对应主机名
+(2)、修改对应ip地址
+
+6、格式化namenode，注意只需要在 master主机上进行格式化。格式化命令如下：
+hdfs namenode -format
+start-all.sh
+启动secondarynamenode：
+hdfs secondarynamenode -format
+hadoop-daemon.sh start secondarynamenode
+
