@@ -1,0 +1,15 @@
+GitHub 的 SSH 密钥指南 :
+https://help.github.com/articles/generating-ssh-keys
+
+ssh-keygen -t rsa -C 741301964@qq.com
+复制id_rsa.pub文件里面的内容，到https://github.com/settings/keys新建一个
+ssh -T git@github.com
+
+git init
+git remote add origin git@github.com:BossOpen/VehicleMultimedia-IMX6.git
+git clone git@github.com:BossOpen/VehicleMultimedia-IMX6.git
+git config user.name "blzt"
+git config user.email "blzt@XXX.com"
+git add .
+git commit -m "first"
+git push -u origin master
