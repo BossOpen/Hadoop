@@ -1,0 +1,167 @@
+安装java：https://blog.csdn.net/qq_42003566/article/details/82629570
+安装eclipse：选择java包地址
+安装maven：https://blog.csdn.net/forever428/article/details/84110832
+
+1、下载Maven：
+https://mirrors.tuna.tsinghua.edu.cn/apache/maven/maven-3/3.6.1/binaries/apache-maven-3.6.1-bin.zip
+2、解压到D:\Maven\，进入D:\Maven\apache-maven-3.6.1\conf，打开settings.xml编辑
+(1)、修改仓库地址
+<localRepository>D:\Maven\repository</localRepository>
+(2)、修改服务器地址
+<mirror>
+        <id>nexus-aliyun</id>
+        <mirrorOf>central</mirrorOf>
+        <name>Nexus aliyun</name>
+        <url>http://maven.aliyun.com/nexus/content/groups/public</url>
+</mirror>
+(3)、修改java版本，对应本机java版本
+<profile>
+  <id>jdk-1.8</id>
+  <activation>
+    <activeByDefault>true</activeByDefault>
+    <jdk>1.8</jdk>
+  </activation>
+  <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.compilerVersion>1.8</maven.compiler.compilerVersion>
+  </properties>
+</profile> 
+
+(4)、打开eclipse，进入window—preferences—搜索maven----点击Installations
+添加Maven路径：D:\Maven\apache-maven-3.6.1
+再点击User Settings：添加setting文件：D:\Maven\apache-maven-3.6.1\conf\settings.xml
+保存关闭。
+
+(5)、新建maven工程：File--New--Other，搜索maven选择Maven Project
+下一步选择路径，然后选择quickstart，下一步添加Group Id：com.wch.as
+下一步添加Artifact Id：as，点击finish完成。
+
+(6)、配置jar包
+进入https://mvnrepository.com/，搜索hadoop，选择对应版本点击进入，复制代码粘贴到配置文件pom.xml
+
+<dependencies>
+  <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
+	<dependency>
+	    <groupId>org.apache.hadoop</groupId>
+	    <artifactId>hadoop-common</artifactId>
+	    <version>2.7.3</version>
+	</dependency>
+	<dependency>
+    	<groupId>org.apache.hadoop</groupId>
+    	<artifactId>hadoop-client</artifactId>
+    	<version>2.7.3</version>
+	</dependency>
+	<dependency>
+            <groupId>jdk.tools</groupId>
+            <artifactId>jdk.tools</artifactId>
+            <version>1.8</version>
+            <scope>system</scope>
+            <systemPath>${JAVA_HOME}/lib/tools.jar</systemPath>
+        </dependency>
+</dependencies>
+
+(7)、测试demo
+package com.wch.as.as;
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IOUtils;
+ 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
+ 
+public class App {
+    public static void main(String[] args) {
+        String hdfsfilePath = "/user/cc.txt";
+        //copyLocalFiletoHdfs(hdfsfilePath);
+        copyHdfsFileToConsole(hdfsfilePath);
+    }
+ 
+    /**
+     * 读取hdfs的文件并且显示在控制台
+     *
+     * @param hdfsPath hdfs的文件路径
+     */
+    public static void copyHdfsFileToConsole(String hdfsPath) {
+        FileSystem fileSystem = null;
+        FSDataInputStream inputStream = null;
+ 
+        try {
+            //1.获取
+            Configuration conf = new Configuration();
+            //2.配置hdfs的访问入口  (配置文件core-site.xml放到同包的resources下)
+            conf.set("fs.defaultFS","hdfs://192.168.1.191:9000");
+            //3.获取hdfs对象
+            fileSystem = FileSystem.newInstance(conf);
+            //4.对hdfs对象进行操作
+            inputStream = fileSystem.open(new Path(hdfsPath));
+            IOUtils.copyBytes(inputStream, System.out, 4096, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+ 
+    /**
+     * 上传windows本地文件到hdfs
+     *
+     * @param hdfsFilePath
+     */
+    public static void copyLocalFiletoHdfs(String hdfsFilePath) {
+        FileSystem fileSystem = null;
+        FSDataOutputStream outputStream = null;
+        FileInputStream fileInputStream = null;
+        Properties properties = System.getProperties();
+        properties.setProperty("HADOOP_USER_NAME", "hduser");
+        Configuration conf = new Configuration();
+        //2.配置hdfs的访问入口  (配置文件core-site.xml放到同包的resources下)
+
+        conf.set("fs.defaultFS","hdfs://192.168.1.191:9000");
+        System.out.print(hdfsFilePath);
+        /*File file = new File(hdfsFilePath);
+        if (!file.exists()){
+            file.mkdirs();
+        }*/
+        try {
+            
+            fileSystem = FileSystem.newInstance(conf);
+            outputStream = fileSystem.create(new Path(hdfsFilePath), true);
+            fileInputStream = new FileInputStream(new File("D://aa.txt"));
+            IOUtils.copyBytes(fileInputStream, outputStream, 4096, true);
+            //fileSystem.copyFromLocalFile(false, new Path("D://aa.txt"), new Path(hdfsFilePath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (fileInputStream != null) {
+                try {
+                    fileInputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+ 
+}
+
