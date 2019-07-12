@@ -1,0 +1,48 @@
+a）、如果无法创建NameNode或者DataNode，删除缓存文件
+rm ~/data/hadoop/hdfs/namenode/* -rf;rm ~/data/hadoop/hdfs/datanode/* -rf
+b)、出现以下问题说明防火墙没关闭。
+19/07/11 15:26:10 WARN hdfs.DFSClient: DataStreamer Exception
+org.apache.hadoop.ipc.RemoteException(java.io.IOException): File /user/hduser/QuasiMonteCarlo_1562873167726_507137185/in/part0 could only be replicated to 0 nodes instead of minReplication (=1).  There are 0 datanode(s) running and no node(s) are excluded in this operation.
+	at org.apache.hadoop.hdfs.server.blockmanagement.BlockManager.chooseTarget4NewBlock(BlockManager.java:1571)
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.getNewBlockTargets(FSNamesystem.java:3107)
+	at org.apache.hadoop.hdfs.server.namenode.FSNamesystem.getAdditionalBlock(FSNamesystem.java:3031)
+	at org.apache.hadoop.hdfs.server.namenode.NameNodeRpcServer.addBlock(NameNodeRpcServer.java:725)
+	at org.apache.hadoop.hdfs.protocolPB.ClientNamenodeProtocolServerSideTranslatorPB.addBlock(ClientNamenodeProtocolServerSideTranslatorPB.java:492)
+	
+c)、代码操作hdfs
+报错（没有设置hdfs地址）：
+java.io.IOException: (null) entry in command string: null chmod 0644 D:\user\cc.txt
+解决：代码中加入
+Configuration conf = new Configuration();
+//2.配置hdfs的访问入口  (配置文件core-site.xml放到同包的resources下)
+conf.set("fs.defaultFS","hdfs://192.168.1.191:9000");
+
+d)、代码操作hdfs
+报错（没有设置登录用户名，）：
+org.apache.hadoop.security.AccessControlException: Permission denied: user=BL, access=WRITE, inode="/user/cc.txt":hduser:supergroup:-rw-r--r--
+
+原因：
+hadoop在访问hdfs的时候会进行权限认证，取用户名的过程是这样的：
+读取HADOOP_USER_NAME系统环境变量，如果不为空，那么拿它作username，如果为空
+读取HADOOP_USER_NAME这个java环境变量，如果为空
+从com.sun.security.auth.NTUserPrincipal或者com.sun.security.auth.UnixPrincipal的实例获取username
+
+解决：代码加入
+Properties properties = System.getProperties();
+properties.setProperty("HADOOP_USER_NAME", "hduser");
+
+e)、代码操作hdfs
+报错（hadoop包不全）：
+java.io.IOException: No FileSystem for scheme: hdfs
+解决：pom.xml加入
+<dependency>
+	<groupId>org.apache.hadoop</groupId>
+	<artifactId>hadoop-common</artifactId>
+	<version>2.7.3</version>
+</dependency>
+<!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-client -->
+<dependency>
+	<groupId>org.apache.hadoop</groupId>
+	<artifactId>hadoop-client</artifactId>
+	<version>2.7.3</version>
+</dependency>
