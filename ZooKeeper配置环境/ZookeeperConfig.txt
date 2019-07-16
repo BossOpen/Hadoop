@@ -51,5 +51,24 @@ source ~/.bashrc
 
 四、创建事务日志存储路径dataDir：
 sudo mkdir /home/hduser/data/zookeeper
+sudo chown -R hduser /home/hduser/data/zookeeper/  #没有权限运行出错
 进入目录，创建myid文件，文件写入id值为1，与zoo.cfg设置的server1:2888:3888对应，代表不同的zk节点：
-cd /home/hduser/data/zookeeper
+sudo vi /home/hduser/data/zookeeper/myid
+
+五、拷贝环境到其他服务器：
+拷贝zk：
+sudo scp -r ../zookeeper-3.4.10/ slave1:/home/hduser/hadoop/
+sudo scp -r ../zookeeper-3.4.10/ slave2:/home/hduser/hadoop/
+拷贝bashrc：
+sudo scp -r ~/.bashrc slave1:/home/hduser/.bashrc
+sudo scp -r ~/.bashrc slave2:/home/hduser/.bashrc
+
+六、进入其他服务器重复步骤四；
+
+七、运行：
+zkServer.sh  start运行zk，出现一下输出代表安装成功，jps查看会出现QuorumPeerMain进程：
+ZooKeeper JMX enabled by default
+Using config: /home/hduser/hadoop/zookeeper-3.4.10/bin/../conf/zoo.cfg
+Starting zookeeper ... STARTED
+
+八、zkCli.sh模拟连接，quit退出连接。
