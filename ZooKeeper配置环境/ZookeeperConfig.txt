@@ -66,7 +66,7 @@ sudo scp -r ~/.bashrc slave2:/home/hduser/.bashrc
 六、进入其他服务器重复步骤四；
 
 七、运行：
-zkServer.sh  start运行zk，出现一下输出代表安装成功，jps查看会出现QuorumPeerMain进程：
+zkServer.sh  start运行zk(每台都要执行)，出现一下输出代表安装成功，jps查看会出现QuorumPeerMain进程：
 ZooKeeper JMX enabled by default
 Using config: /home/hduser/hadoop/zookeeper-3.4.10/bin/../conf/zoo.cfg
 Starting zookeeper ... STARTED
