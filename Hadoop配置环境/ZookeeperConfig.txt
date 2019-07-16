@@ -1,0 +1,55 @@
+一、解压zookeeper-3.4.10.tar.gz：
+tar -zxvf zookeeper-3.4.10.tar.gz
+
+二、修改配置文件
+cd zookeeper-3.4.10/conf/
+rm ../docs/ -rf  #删除文档，加快拷贝速度。
+cp zoo_sample.cfg zoo.cfg   #zookeeper只能识别zoo.cfg，如果不修改运行的时候必须指定配置文件
+vi zoo.cfg
+修改配置文件为：
+
+#心跳间隔，默认单位ms，也是zookeeper里面最小的时间单位
+#还可以通过心跳来控制Flower跟Leader的通信时间，默认情况下FL的会话时常是心跳间隔的两倍。
+tickTime=2000
+
+# zookeeper里最大的初始化同步时间限制为10个tickTime即20s
+initLimit=10
+
+#zookeeper里leader和follower检测的最大延迟
+syncLimit=5
+
+#事务日志存储路径
+dataDir=/home/hduser/data/zookeeper
+
+#客户端和服务端连接的端口
+clientPort=2181
+
+# 客户端连接的最大数量
+#maxClientCnxns=60
+
+#设置服务器名称和地址，2888服务器之间通信端口，3888服务器之间选举端口
+server.1=master:2888:3888
+server.2=slave1:2888:3888
+server.3=slave2:2888:3888
+
+三、配置系统环境变量
+vi ~/.bashrc
+添加Zookeeper环境变量：
+export JAVA_HOME=/opt/jdk
+export JRE_HOME=$JAVA_HOME/jre
+export CLASSPATH=.:$JAVA_HOME/lib
+#export PATH=$PATH:$JAVA_HOME/bin
+echo "config java env......"
+export HADOOP_HOME=/opt/hadoop
+#export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+echo "config hadoop env......"
+export ZK_HOME=/home/hduser/hadoop/zookeeper-3.4.10
+echo "config zookeeper env......"
+export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$ZK_HOME/bin
+使环境变量生效：
+source ~/.bashrc
+
+四、创建事务日志存储路径dataDir：
+sudo mkdir /home/hduser/data/zookeeper
+进入目录，创建myid文件，文件写入id值为1，与zoo.cfg设置的server1:2888:3888对应，代表不同的zk节点：
+cd /home/hduser/data/zookeeper
