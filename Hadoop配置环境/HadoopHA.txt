@@ -202,8 +202,7 @@ cp hadoop-2.8.5/etc/hadoop/mapred-site.xml.template hadoop-2.8.5/etc/hadoop/mapr
 	</property>
 </configuration>
 
-（5）、etc/hadoop/yarn-site.xml 添加：
-<configuration>
+（5）、etc/hadoop/yarn-site.xml 添加：（）<configuration>
 	<!-- 指定ResourceManager的地址-->
 	<property>
 		<name>yarn.resourcemanager.hostname</name>
@@ -228,4 +227,111 @@ slave2
 (1)、修改对应主机名
 (2)、修改对应ip地址
 
-6、在
+7、安装Zookeeper，只有（master-bac，slave1，slave2需要安装Zookeeper）
+配置参考hadoop/core-site.xml的ha.zookeeper.quorum参数
+（1）、解压zookeeper-3.4.10.tar.gz：
+tar -zxvf zookeeper-3.4.10.tar.gz
+
+（2）、修改配置文件
+cd zookeeper-3.4.10/conf/
+rm ../docs/ -rf  #删除文档，加快拷贝速度。
+cp zoo_sample.cfg zoo.cfg   #zookeeper只能识别zoo.cfg，如果不修改运行的时候必须指定配置文件
+vi zoo.cfg
+修改配置文件为：
+
+#心跳间隔，默认单位ms，也是zookeeper里面最小的时间单位
+#还可以通过心跳来控制Flower跟Leader的通信时间，默认情况下FL的会话时常是心跳间隔的两倍。
+tickTime=2000
+
+# zookeeper里最大的初始化同步时间限制为10个tickTime即20s
+initLimit=10
+
+#zookeeper里leader和follower检测的最大延迟
+syncLimit=5
+
+#事务日志存储路径
+dataDir=/home/hduser/data/zookeeper
+
+#客户端和服务端连接的端口
+clientPort=2181
+
+# 客户端连接的最大数量
+#maxClientCnxns=60
+
+#设置服务器名称和地址，2888服务器之间通信端口，3888服务器之间选举端口
+server.1=master-back:2888:3888
+server.2=slave1:2888:3888
+server.3=slave2:2888:3888
+
+（3）、配置系统环境变量
+vi ~/.bashrc
+添加Zookeeper环境变量：
+export JAVA_HOME=/opt/jdk
+export JRE_HOME=$JAVA_HOME/jre
+export CLASSPATH=.:$JAVA_HOME/lib
+#export PATH=$PATH:$JAVA_HOME/bin
+echo "config java env......"
+export HADOOP_HOME=/opt/hadoop
+#export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+echo "config hadoop env......"
+export ZK_HOME=/home/hduser/hadoop/zookeeper-3.4.10
+echo "config zookeeper env......"
+export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$ZK_HOME/bin
+使环境变量生效：
+source ~/.bashrc
+
+（4）、创建事务日志存储路径dataDir：
+sudo mkdir /home/hduser/data/zookeeper
+sudo chown -R hduser /home/hduser/data/zookeeper/  #没有权限运行出错
+进入目录，创建myid文件，文件写入id值为1，与zoo.cfg设置的server1:2888:3888对应，代表不同的zk节点：
+sudo vi /home/hduser/data/zookeeper/myid
+
+（5）、拷贝环境到其他服务器：
+拷贝zk：
+sudo scp -r ../zookeeper-3.4.10/ slave1:/home/hduser/hadoop/
+sudo scp -r ../zookeeper-3.4.10/ slave2:/home/hduser/hadoop/
+拷贝bashrc：
+sudo scp -r ~/.bashrc slave1:/home/hduser/.bashrc
+sudo scp -r ~/.bashrc slave2:/home/hduser/.bashrc
+
+（6）、进入其他服务器重复步骤四；
+
+（7）、运行：
+zkServer.sh  start运行zk(每台都要执行)，出现一下输出代表安装成功，jps查看会出现QuorumPeerMain进程：
+ZooKeeper JMX enabled by default
+Using config: /home/hduser/hadoop/zookeeper-3.4.10/bin/../conf/zoo.cfg
+Starting zookeeper ... STARTED
+
+（8）、zkCli.sh模拟连接，quit退出连接。
+
+7、初始化HA服务
+（1）、启动Zookeeper：
+在安装Zookeeper的服务器启动
+zkServer.sh start
+jps查看是否启动成功
+
+（2）、所有服务器启动journalnode以完成NameNode数据同步：
+hadoop-daemon.sh start journalnode
+jps查看是否启动成功
+
+（3）、主备节点元数据同步，第一次启动必须在选定的active节点格式化NameNode：
+选择master主机：
+hdfs namenode -format
+启动主节点：
+hadoop-daemon.sh start namenode
+格式化之后到备份节点master-back，拷贝元数据到备份节点：
+hdfs namenode -bootstrapStandby
+
+(4)、初始化HA状态，即在Zookeeper创建节点：
+hdfs zkfc -formatZK
+
+（5）、启动集群：
+start-dfs.sh
+
+8、启动HA服务：
+（1）、启动Zookeeper：
+在安装Zookeeper的服务器启动
+zkServer.sh start
+jps查看是否启动成功
+（2）、启动集群：
+start-dfs.sh
