@@ -202,20 +202,44 @@ cp hadoop-2.8.5/etc/hadoop/mapred-site.xml.template hadoop-2.8.5/etc/hadoop/mapr
 	</property>
 </configuration>
 
-（5）、etc/hadoop/yarn-site.xml 添加：（）<configuration>
-	<!-- 指定ResourceManager的地址-->
-	<property>
-		<name>yarn.resourcemanager.hostname</name>
-		<value>master</value>
-	</property>
+（5）、etc/hadoop/yarn-site.xml 添加：
+<configuration>
 	<!-- 指定reducer获取数据的方式-->
 	<property>
 		<name>yarn.nodemanager.aux-services</name>
 		<value>mapreduce_shuffle</value>
 	</property>
 	<property>
-		<name>yarn.nodemanager.local-dirs</name>
-		<value>file:///home/hduser/data/hadoop/yarn/namenode</value>
+  		<name>yarn.resourcemanager.ha.enabled</name>
+  		<value>true</value>
+	</property>
+	<property>
+  		<name>yarn.resourcemanager.cluster-id</name>
+  		<value>cluster1</value>
+	</property>
+	<property>
+  		<name>yarn.resourcemanager.ha.rm-ids</name>
+  		<value>rm1,rm2</value>
+	</property>
+	<property>
+  		<name>yarn.resourcemanager.hostname.rm1</name>
+  		<value>master</value>
+	</property>
+	<property>
+  		<name>yarn.resourcemanager.hostname.rm2</name>
+  		<value>master-back</value>
+	</property>
+	<property>
+  		<name>yarn.resourcemanager.webapp.address.rm1</name>
+  		<value>master:8088</value>
+	</property>
+	<property>
+  		<name>yarn.resourcemanager.webapp.address.rm2</name>
+  		<value>master-back:8088</value>
+	</property>
+	<property>
+  		<name>yarn.resourcemanager.zk-address</name>
+  		<value>master-back:2181,slave1:2181,slave2:2181</value>
 	</property>
 </configuration>
 
@@ -326,7 +350,7 @@ hdfs namenode -bootstrapStandby
 hdfs zkfc -formatZK
 
 （5）、启动集群：
-start-dfs.sh
+start-all.sh
 
 8、启动HA服务：
 （1）、启动Zookeeper：
@@ -334,4 +358,4 @@ start-dfs.sh
 zkServer.sh start
 jps查看是否启动成功
 （2）、启动集群：
-start-dfs.sh
+start-all.sh
