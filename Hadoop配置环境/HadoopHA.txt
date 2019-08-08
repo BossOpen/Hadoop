@@ -352,6 +352,14 @@ hdfs zkfc -formatZK
 （5）、启动集群：
 start-all.sh
 
+（6）、NameNode HA操作完之后我们可以发现只有一个节点（这里是master）启动，需要手动启动另外一个节点（master-back）的resourcemanager。
+yarn-daemon.sh start resourcemanager
+
+然后用以下指令查看resourcemanager状态
+yarn rmadmin –getServiceState rm1
+
+结果显示Active，而rm2是standby。
+
 8、启动HA服务：
 （1）、启动Zookeeper：
 在安装Zookeeper的服务器启动
